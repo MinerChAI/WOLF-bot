@@ -37,4 +37,4 @@ async def on_message(message):
         async for m in client.logs_from(message.channel, limit=int(message.content.split()[-1])):
             await client.delete_message(m)
 
-client.run(token)
+client.run(token) 
