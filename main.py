@@ -27,8 +27,6 @@ async def on_message(message):
         embed = discord.Embed.from_data(json)
         if 'footer' in json:
             embed.set_footer(**json['footer'])
-        else:
-            embed.set_footer(text='Powered by Empathy Banana', icon_url='https://cdn.discordapp.com/avatars/426757590022881290/b399c23317d8056a060f654b5c023077.png')
         if 'text' in json:
             await client.send_message(message.channel, json['text'], embed=embed)
         else:
