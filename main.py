@@ -2,101 +2,45 @@ import discord
 import asyncio
 import requests
 from datetime import datetime as dt
-import tkinter as tk
+import os
+import traceback
 #https://canary.discordapp.com/channels/472976639651872788/473077114208256010/505767687872577547
 
 from const import *
+from definitions import *
 
-def send_on():
-    global send
-    send = True
-    
-class Report(tk.Frame):
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent)
-
-        scrollbar = tk.Scrollbar(self)
-        scrollbar.pack(side='right', fill='y')
-        self._text = tk.Text(self, state=tk.DISABLED, *args, **kwargs)
-        self._text.pack(side='left', fill='both', expand=1)
-
-        scrollbar['command'] = self._text.yview
-        self._text['yscrollcommand'] = scrollbar.set
-
-    def write(self, text, end='\n'):
-        self._text.configure(state=tk.NORMAL)
-        l = list(text + end)
-        for i in range(len(l)):
-            if len(l[i].encode()) >= 4:
-                l[i] = '\u2370'
-        self._text.insert(tk.END, ''.join(l))
-        self._text.configure(state=tk.DISABLED)
-        self._text.yview_moveto('1.0')  # Прокрутка до конца вниз после вывода
-
-    def clear(self):
-        self._text.configure(state=tk.NORMAL)
-        self._text.delete(0.0, tk.END)
-        self._text.configure(state=tk.DISABLED)
-
-    def flush(self):
-        # Метод нужен для полного видимого соответствия классу StringIO в части вывода
-        pass
-
-class EntryWithPlaceholder(tk.Entry):
-    def __init__(self, master=None, placeholder="PLACEHOLDER", color='grey', **kwa):
-        super().__init__(master, **kwa)
-
-        self.placeholder = placeholder
-        self.placeholder_color = color
-        self.default_fg_color = self['fg']
-
-        self.bind("<FocusIn>", self.foc_in)
-        self.bind("<FocusOut>", self.foc_out)
-
-        self.put_placeholder()
-
-    def put_placeholder(self):
-        self.insert(0, self.placeholder)
-        self['fg'] = self.placeholder_color
-
-    def foc_in(self, *args):
-        if self['fg'] == self.placeholder_color:
-            self.delete('0', 'end')
-            self['fg'] = self.default_fg_color
-
-    def foc_out(self, *args):
-        if not self.get():
-            self.put_placeholder()
-            
 client = discord.Client()
 
 data = {}
 
 true, false = True, False
 
+def send_on():
+    global send
+    send = True
+
+def stop():
+    root.destroy()
+    client.close()
+    os.abort()
+    
+
+btnSend = tk.Button(inFrame, text='Отправить', command=send_on)
+btnStop = tk.Button(toolbarFrame, text='Остановить', command=stop)
+
+btnSend.pack(side = 'right', fill = 'x')
+btnStop.pack(side = 'left')
+
 send = False
 
-root = tk.Tk()
-root.title('WOLF bot')
-
-outFrame = Report(root, height = 30)
-inFrame = tk.Frame(root, height = 10)
-
-txtBox = EntryWithPlaceholder(inFrame, placeholder='Введите текст сообщения...', font = 'Arial 14', width = 70)
-txtBoxChnl = EntryWithPlaceholder(inFrame, placeholder='Введите ID канала', font = 'Arial 14')
-btnSend = tk.Button(inFrame, text='Отправить', command=send_on)
-
-outFrame.pack(side = 'top', fill = 'x')
-inFrame.pack(side = 'bottom', fill = 'both')
-txtBox.pack(side = 'left', fill = 'x')
-txtBoxChnl.pack(side = 'left', fill = 'x')
-btnSend.pack(side = 'right', fill = 'x')
 
 @client.event
 async def on_ready():
     outFrame.write('Logged in as')
     outFrame.write(client.user.name)
     outFrame.write(client.user.id)
+    outFrame.write('OAuth2:')
+    outFrame.write(discord.utils.oauth_url(client.user.id))
     outFrame.write('------')
     with open('data.json') as df:
         try:
@@ -108,15 +52,7 @@ async def on_ready():
 async def on_message(message):
     outFrame.write(message.server.name + ' / ' + message.channel.name + ' (' + message.channel.id + ') / ' + message.author.display_name + ' написал: ' + message.clean_content)  
     mutedrole = [i for i in message.server.roles if i.name == 'muted'][0]
-    for server in data:
-        for member in data[server]['muted']:
-            m = client.get_server(server).get_member(member)
-            if m is None:
-                continue
-            if dt.utcnow().timestamp() >= data[server]['muted'][member]:
-                await client.remove_roles(m, mutedrole)
-            else:
-                await client.add_roles(m, mutedrole)
+    
     if message.content.startswith('+say'):
         try:
             json = eval(message.content[4:])
@@ -143,6 +79,11 @@ async def on_message(message):
         else:
             data[message.server.id]['muted'][message.mentions[0].id] = time_to_timestamp(time)
         await client.add_roles(message.mentions[0], mutedrole)
+        await client.send_message(message.channel, message.mentions[0].mention + ' замучен до ' + datetime.strftime(dt.utcfromtimestamp(time_to_timestamp(time)), "%d.%m.%Y %H:%M:%S") + '(UTC)')
+    
+    if message.content.strtswith('+unmute'):
+        data[message.server.id]['muted'].pop(message.mentions[0].id)
+        await client.send_message(message.channel, message.mentions[0].mention + ' отмучен досрочно')
 
 def time_to_timestamp(a):
     ts = dt.utcnow().timestamp()
@@ -158,8 +99,21 @@ async def bg_task():
     await client.wait_until_ready()  
     #channel = discord.Object(id='508692560873521165')
     while not client.is_closed:
+        for server in data:
+            mutedrole = [i for i in client.get_server(server).roles if i.name == 'muted'][0]
+            for member in data[server]['muted']:
+                m = client.get_server(server).get_member(member)
+                if m is None:
+                    continue
+                if dt.utcnow().timestamp() >= data[server]['muted'][member]:
+                    await client.remove_roles(m, mutedrole)
+                else:
+                    await client.add_roles(m, mutedrole)        
         if send:
-            await client.send_message(discord.Object(id=txtBoxChnl.get()), txtBox.get())
+            try:
+                await client.send_message(discord.Object(id=txtBoxChnl.get()), txtBoxMsg.get())
+            except discord.errors.HTTPException:
+                await on_error(None)
             send = False
         try:
             root.update()
@@ -170,7 +124,9 @@ async def bg_task():
     #    m = input()
     #    await client.send_message(channel, m)
 
-
-#async def
+@client.event
+async def on_error(event, *args, **kwargs):
+    errFrame.write(''.join(traceback.format_stack()) + '\n')
+    #print(''.join(traceback.format_stack()))
 client.loop.create_task(bg_task())
 client.run(token)
