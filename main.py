@@ -3,7 +3,7 @@ import asyncio
 import requests
 from datetime import datetime as dt
 import os
-import traceback
+from traceback import format_exc
 #https://canary.discordapp.com/channels/472976639651872788/473077114208256010/505767687872577547
 
 from const import *
@@ -81,7 +81,7 @@ async def on_message(message):
         await client.add_roles(message.mentions[0], mutedrole)
         await client.send_message(message.channel, message.mentions[0].mention + ' замучен до ' + datetime.strftime(dt.utcfromtimestamp(time_to_timestamp(time)), "%d.%m.%Y %H:%M:%S") + '(UTC)')
     
-    if message.content.strtswith('+unmute'):
+    if message.content.startswith('+unmute'):
         data[message.server.id]['muted'].pop(message.mentions[0].id)
         await client.send_message(message.channel, message.mentions[0].mention + ' отмучен досрочно')
 
@@ -126,7 +126,7 @@ async def bg_task():
 
 @client.event
 async def on_error(event, *args, **kwargs):
-    errFrame.write(''.join(traceback.format_stack()) + '\n')
+    errFrame.write(''.join(format_exc()) + '\n')
     #print(''.join(traceback.format_stack()))
 client.loop.create_task(bg_task())
 client.run(token)
