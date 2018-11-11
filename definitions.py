@@ -59,7 +59,7 @@ class EntryWithPlaceholder(tk.Entry):
 
 root = tk.Tk()
 root.title('WOLF bot')
-root.iconbitmap(r'C:\Users\iVan\Desktop\Bots\WOLF.ico')
+root.iconbitmap(r'WOLF.ico')
 
 toolbarFrame = tk.Frame(root, height=10)
 outFrame = Report(root, height = 30)
