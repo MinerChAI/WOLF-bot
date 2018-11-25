@@ -1,4 +1,5 @@
 import tkinter as tk
+from os import abort
     
 class Report(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -42,7 +43,7 @@ class EntryWithPlaceholder(tk.Entry):
         self.bind("<FocusIn>", self.foc_in)
         self.bind("<FocusOut>", self.foc_out)
 
-        self.put_placeholder()
+        self.put_placeholder()  
 
     def put_placeholder(self):
         self.insert(0, self.placeholder)
@@ -59,19 +60,22 @@ class EntryWithPlaceholder(tk.Entry):
 
 root = tk.Tk()
 root.title('WOLF bot')
-root.iconbitmap(r'WOLF.ico')
-
+root.iconbitmap('WOLF.ico')
+    
 toolbarFrame = tk.Frame(root, height=10)
-outFrame = Report(root, height = 30)
+outFrame = Report(root, height = 30, fg='green')
 errFrame = Report(outFrame, width = 40, fg='red')
+#dataFrame = Report(outFrame, width = 40, fg='orange')
 inFrame = tk.Frame(root, height = 10)
-            
-txtBoxMsg = EntryWithPlaceholder(inFrame, placeholder='Введите текст сообщения...', font = 'Arial 14', width = 70)
+                
+txtBoxMsg = EntryWithPlaceholder(inFrame, placeholder='Введите текст сообщения...', font = 'Arial 14', width = 110)
 txtBoxChnl = EntryWithPlaceholder(inFrame, placeholder='Введите ID канала', font = 'Arial 14')
-
+    
+    
 toolbarFrame.pack(side='top', fill='x')            
 outFrame.pack(side = 'top', fill = 'x')
 errFrame.pack(side='right', fill='y')
+#dataFrame.pack(side='right', fill='y')
 inFrame.pack(side = 'bottom', fill = 'both')
 txtBoxMsg.pack(side = 'left', fill = 'x')
-txtBoxChnl.pack(side = 'left', fill = 'x')
+txtBoxChnl.pack(side = 'left', fill = 'x')  
