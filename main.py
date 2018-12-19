@@ -90,32 +90,10 @@ async def on_message(message):
         async for m in client.logs_from(message.channel, limit=int(message.content.split()[-1])):
             await client.delete_message(m)
     
-    #==========================================================================================================================
-    
-    if message.content.startswith('+embed'):
-        _, cmd, arg = message.content.split(maxsplit=2)
-        if cmd == 'create':
-            m = await client.send_message(message.channel, embed=discord.Embed.Empty)
-            if message.server.id not in data:
-                data[message.server.id] = {'embeds':[(message.channel.id, m.id)]}
-            else:
-                data[message.server.id]['embeds'].append((message.channel.id, m.id))
-            await client.send_message('Создан новый embed с id `%s`'%(len(data[message.server.id]['embeds']) - 1))
-        else:
-            op, n, text = arg.split(maxsplit=2)
-            ids = data[message.server.id]['embeds'][n]
-            m = client.get_message(client.get_channel(ids[0]), ids[1])
-            e: discord.Embed = m.embeds[0]
-            if op[0] == 'add-field':
-                key, value = text.split('|')
-                e.add_field()
-    
-    #==========================================================================================================================
-    
     if message.content.startswith('+mute'):
         time = message.content.split()[2:]
         if message.server.id not in data:
-            data[message.server.id] = {'muted':{message.mentions[0].id:time_to_timestamp(time)}, 'embed'}
+            data[message.server.id] = {'muted':{message.mentions[0].id:time_to_timestamp(time)}}
         else:
             data[message.server.id]['muted'][message.mentions[0].id] = time_to_timestamp(time)
         #await client.add_roles(message.mentions[0], mutedrole)
