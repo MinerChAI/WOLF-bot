@@ -2,74 +2,56 @@ import discord
 import asyncio
 import requests
 from datetime import datetime as dt
-from os import abort
+import os
 from traceback import format_exc
 #https://canary.discordapp.com/channels/472976639651872788/473077114208256010/505767687872577547
 
 from const import *
-#from definitions import *
+from definitions import *
 
 client = discord.Client()
 
-true, false = True, False
-
-#def send_on():
-    #global send
-    #send = True
-
-#def stop_on():
-    #global stop
-    #stop = True
-    #root.destroy()
-    #client.close()
-    ##abort()
-
-#async def update_data():
-    ##with open('data.json', 'w') as df:
-    ##    df.write(str(data))    
-    ##dataFrame.clear()
-    ##dataFrame.write(str(data))
-    #pass
-
-
-
-#send = False
-#stop = False
-
 data = {}
 
-  
-#btnSend = tk.Button(inFrame, text='Отправить', command=send_on)
-#btnStop = tk.Button(toolbarFrame, text='Остановить', command=stop_on)
+true, false = True, False
 
-#btnSend.pack(side = 'right', fill = 'x') 
-#btnStop.pack(side = 'left', fill='x')   
+def send_on():
+    global send
+    send = True
+
+def stop():
+    root.destroy()
+    client.close()
+    os.abort()
+    
+
+btnSend = tk.Button(inFrame, text='Отправить', command=send_on)
+btnStop = tk.Button(toolbarFrame, text='Остановить', command=stop)
+
+btnSend.pack(side = 'right', fill = 'x')
+btnStop.pack(side = 'left')
+
+send = False
+
 
 @client.event
 async def on_ready():
-    #print(2)
-    global data, start
-    print('Logged in as')
-    print(client.user.name)
-    print(client.user.id)
-    print('OAuth2:')
-    print(discord.utils.oauth_url(client.user.id))
-    print('------')
-    #print(2.5)
+    outFrame.write('Logged in as')
+    outFrame.write(client.user.name)
+    outFrame.write(client.user.id)
+    outFrame.write('OAuth2:')
+    outFrame.write(discord.utils.oauth_url(client.user.id))
+    outFrame.write('------')
     with open('data.json') as df:
         try:
             data = eval(df.read())
         except SyntaxError:
             data = {}
-    #await update_data()
-    client.loop.create_task(bg_task())
-    
 
 @client.event
 async def on_message(message):
-    global data
-    print(message.server.name + ' / ' + message.channel.name + ' (' + message.channel.id + ') / ' + message.author.display_name + ' написал: ' + message.clean_content)  
-    mutedrole = discord.utils.get(message.server.roles, name='muted')
+    outFrame.write(message.server.name + ' / ' + message.channel.name + ' (' + message.channel.id + ') / ' + message.author.display_name + ' написал: ' + message.clean_content)  
+    mutedrole = [i for i in message.server.roles if i.name == 'muted'][0]
     
     if message.content.startswith('+say'):
         try:
@@ -96,19 +78,16 @@ async def on_message(message):
             data[message.server.id] = {'muted':{message.mentions[0].id:time_to_timestamp(time)}}
         else:
             data[message.server.id]['muted'][message.mentions[0].id] = time_to_timestamp(time)
-        #await client.add_roles(message.mentions[0], mutedrole)
-        #await update_data()
-        await client.send_message(message.channel, message.mentions[0].mention + ' замучен до ' + dt.strftime(dt.fromtimestamp(time_to_timestamp(time)), "%d.%m.%Y %H:%M:%S") + '(UTC)')
+        await client.add_roles(message.mentions[0], mutedrole)
+        await client.send_message(message.channel, message.mentions[0].mention + ' замучен до ' + datetime.strftime(dt.utcfromtimestamp(time_to_timestamp(time)), "%d.%m.%Y %H:%M:%S") + '(UTC)')
     
     if message.content.startswith('+unmute'):
         data[message.server.id]['muted'].pop(message.mentions[0].id)
-        #await update_data()
-        await client.remove_roles(message.mentions[0], mutedrole)
         await client.send_message(message.channel, message.mentions[0].mention + ' отмучен досрочно')
 
 def time_to_timestamp(a):
     ts = dt.utcnow().timestamp()
-    timechars = {'s':1, 'm':60, 'h':60*60, 'd':60 * 60 * 24, 'w': 60 * 60 * 24 * 7, 'M':60 * 60 * 24 * 30, 'y':60 * 60 * 24 * 30 * 12}
+    timechars = {'s':1, 'm':60, 'h':60*60, 'd':60 * 60 * 24, 'w': 60 * 60 * 24 * 7, 'M':60 * 60 * 24 * 30, 'y':60 * 60 * 24 * 30 * 365}
     for i in a:
         n = int(i[:-1])
         c = i[-1]
@@ -116,51 +95,38 @@ def time_to_timestamp(a):
     return ts
 
 async def bg_task():
-    #print('started loop')
-    global data
+    global send
+    await client.wait_until_ready()  
+    #channel = discord.Object(id='508692560873521165')
     while not client.is_closed:
-        #print('in loop')
-        for server in data.copy():
-            mutedrole = discord.utils.get(client.get_server(server).roles, name='muted')
-            for member in data[server]['muted'].copy():
+        for server in data:
+            mutedrole = [i for i in client.get_server(server).roles if i.name == 'muted'][0]
+            for member in data[server]['muted']:
                 m = client.get_server(server).get_member(member)
                 if m is None:
                     continue
                 if dt.utcnow().timestamp() >= data[server]['muted'][member]:
                     await client.remove_roles(m, mutedrole)
-                    try:
-                        data.pop(member)
-                    except:
-                        pass
                 else:
-                    await client.add_roles(m, mutedrole)    
-            #print('p1')
-            #await update_data()
-            with open('data.json', 'w') as df:
-                df.write(str(data))
-            #dataFrame.clear()
-            #dataFrame.write(str(data))
-        #print('p2')
-        #if send:
-            #try:
-                #await client.send_message(discord.Object(id=txtBoxChnl.get()), txtBoxMsg.get())
-                #txtBoxMsg.delete(0, 'end')
-                #txtBoxMsg.foc_out()
-            #except discord.errors.HTTPException:
-                #await on_error(None)
-            #send = False
-        #try:
-            ##print('update')
-            #root.update()
-        #except tk._tkinter.TclError:
-            #stop_on()
-        await asyncio.sleep(.01)
-    #print('stopped loop')
+                    await client.add_roles(m, mutedrole)        
+        if send:
+            try:
+                await client.send_message(discord.Object(id=txtBoxChnl.get()), txtBoxMsg.get())
+            except discord.errors.HTTPException:
+                await on_error(None)
+            send = False
+        try:
+            root.update()
+        except tk._tkinter.TclError:
+            root.quit()
+            break
+        await asyncio.sleep(0.01)
     #    m = input()
     #    await client.send_message(channel, m)
 
-#@client.event
-#async def on_error(event, *args, **kwargs):
-    ##print(''.join(format_exc()))
-    #errFrame.write(''.join(format_exc()) + '\n')
+@client.event
+async def on_error(event, *args, **kwargs):
+    errFrame.write(''.join(format_exc()) + '\n')
+    #print(''.join(traceback.format_stack()))
+client.loop.create_task(bg_task())
 client.run(token)
