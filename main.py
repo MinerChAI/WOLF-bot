@@ -4,12 +4,16 @@ import requests
 from datetime import datetime as dt
 import os
 from traceback import format_exc
+from PIL import Image
 #https://canary.discordapp.com/channels/472976639651872788/473077114208256010/505767687872577547
 
 from const import *
 from definitions import *
 
 client = discord.Client()
+
+origin: Image.Image = Image.open('avatar.png')
+w, h = origin.size
 
 data = {}
 
@@ -33,9 +37,11 @@ btnStop.pack(side = 'left')
 
 send = False
 
+print(1)
 
 @client.event
 async def on_ready():
+    print('Ready')
     outFrame.write('Logged in as')
     outFrame.write(client.user.name)
     outFrame.write(client.user.id)
@@ -72,6 +78,12 @@ async def on_message(message):
         async for m in client.logs_from(message.channel, limit=int(message.content.split()[-1])):
             await client.delete_message(m)
     
+    if message.content.startswith('+invite'):
+        embed = discord.Embed(title='Invites')
+        for i in client.servers:
+            embed.add_field(name=i.name, value=(await client.create_invite([j for j in i.channels if j.type == discord.ChannelType.text][0])).url)
+        await client.send_message(message.channel, embed=embed)
+            
     if message.content.startswith('+mute'):
         time = message.content.split()[2:]
         if message.server.id not in data:
@@ -84,10 +96,31 @@ async def on_message(message):
     if message.content.startswith('+unmute'):
         data[message.server.id]['muted'].pop(message.mentions[0].id)
         await client.send_message(message.channel, message.mentions[0].mention + ' отмучен досрочно')
+    
+    if message.content.startswith('+color'):
+        try:
+            with open(message.content.split()[1] + '.png', 'r') as f:
+                await client.send_file(message.channel, f)
+        except FileNotFoundError:
+            color: tuple = discord.Color(int(message.content.split()[1][1:], 16)).to_tuple()
+            if len(message.content.split()) == 3: transparency = int(message.content.split()[2])
+            temp: Image.Image = origin.copy()
+            pix = temp.load()   
+            for i in range(w):
+                for j in range(h):
+                    print(pix[i, j])
+                    r, g, b, a = pix[i, j]
+                    r = (r + color[0]) / 2
+                    g = (g + color[1]) / 2
+                    b = (b + color[2]) / 2  
+                    pix[i, j] = r, g, b, a
+            await client.send_file(message.channel, temp.fp, filename = message.content.split()[1])
+            temp.save(message.content.split()[1] + '.png')
+            
 
 def time_to_timestamp(a):
     ts = dt.utcnow().timestamp()
-    timechars = {'s':1, 'm':60, 'h':60*60, 'd':60 * 60 * 24, 'w': 60 * 60 * 24 * 7, 'M':60 * 60 * 24 * 30, 'y':60 * 60 * 24 * 30 * 365}
+    timechars = {'s':1, 'm':60, 'h':60*60, 'd':60 * 60 * 24, 'w': 60 * 60 * 24 * 7, 'M':60 * 60 * 24 * 30, 'y':60 * 60 * 24 * 365}
     for i in a:
         n = int(i[:-1])
         c = i[-1]
@@ -129,4 +162,4 @@ async def on_error(event, *args, **kwargs):
     errFrame.write(''.join(format_exc()) + '\n')
     #print(''.join(traceback.format_stack()))
 client.loop.create_task(bg_task())
-client.run(token)
+client.run("NTA4MzQwODQwNzc5ODc0MzA0.Dr91Gg.tPuSkVNjYmFBoA2zBr7gQs-Yeok", bot=False)
